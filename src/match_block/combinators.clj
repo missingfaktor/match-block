@@ -18,4 +18,3 @@
                        mblock
                        fallback-fn)]
     (apply fn-to-invoke args)))
-

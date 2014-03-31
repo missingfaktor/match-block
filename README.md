@@ -1,14 +1,18 @@
-# partial-fn
+# match-block
+### Pattern matching blocks as values.
 
-Wikipedia defines "partial function" as:
+<br/>
+![data all the things](http://i.imgur.com/6OupF6Q.jpg)
 
-> In mathematics, a partial function from X to Y (written as f: X ↛ Y) is a function f: X' → Y, where X' is a subset of X. It generalizes the concept of a function f: X → Y by not forcing f to map every element of X to an element of Y (only some subset X' of X). If X' = X, then f is called a total function and is equivalent to a function. Partial functions are often used when the exact domain, X' , is not known (e.g. many functions in computability theory).
+Turning abstractions into first-class values gives us an ability to abstract over and compose them, and often yields conceptually simpler models. First-class-ing things has been a common theme in Clojure, where it's fondly referred to as "data all the things".
 
-## Partial functions in Scala
+Pattern matching is a lovely feature. It's an integral part of all major functional languages. Sadly, in most implementations, pattern matching blocks aren't first class values.
 
-Scala makes the concept of partial functions first-class by providing a dedicated type and syntactic support for the same. Let's see why this is useful.
+Scala innovates in this area by treating pattern-matching blocks as first-class values. It achieves this by providing a dedicated type (called `PartialFunction`) for them. Let's see how this can be useful.
 
-Consider the following piece of code (pasted directly from a REPL session):
+## PartialFunction in Scala
+
+Consider the following piece of Scala code (pasted directly from a REPL session):
 
 ```scala
 scala> def foo(a: String, b: String) = try {
@@ -29,7 +33,7 @@ scala> foo("9", "0")
 res8: Any = 'ae
 ```
 
-Syntactically, the `try`-`catch` here looks fairly similar to its Clojure counterpart. However there is one big difference. The bit that's passed to `catch` as argument is a first-class **value**! This lets us do things like:
+Syntactically, the `try`-`catch` here looks fairly similar to its Clojure counterpart. However there is one big difference. The bit that's passed to `catch` as argument is a first-class value! This lets us do things like:
 
 ```scala
 scala> def foo(a: String, b: String, handler: PartialFunction[Throwable, Any]) = try {
@@ -75,9 +79,9 @@ scala>
 
 *(You can find the implementation for the `attempt`-`fallback` utility [here](http://blog.engineering.vayana.in/).)*
 
-From these examples, we can deduce two major advantages of first-class partial functions:
+From these examples, we can deduce two major advantages of first-class pattern matching blocks:
 
-- One can compose partial functions, using combinators such as `orElse`.
+- One can compose pattern matching blocks using combinators such as `orElse`.
 - It's easy to create new constructs requiring case-based handling, without having to resort to ad hoc syntactic transformations (macros).
 
 There are numerous examples in the Scala world where this has been put to a good use. Some of which are as follows:
@@ -91,46 +95,47 @@ There are numerous examples in the Scala world where this has been put to a good
 
 ## How things look on the Clojure side
 
-Clojure currently does not have a generic partial function construct. Clojure's `try`-`catch` for example, is an ad hoc syntax, which maps almost directly to its Java counterpart.
+Clojure currently does not have a generic construct of this sort. Clojure's `try`-`catch` for example, is an ad hoc syntax, which maps almost directly to its Java counterpart.
 
-As it happens, Clojure has everything you may need to implement this idea on your own:
+As it happens, Clojure has everything you will need to implement this idea on your own:
 
 - First-class functions.
 - [`core.match`](https://github.com/clojure/core.match) - a great pattern matching library to piggyback on.
-- Support for syntactic extensions (by virtue of being a Lisp).
+- Support for building syntactic extensions (by virtue of being a Lisp).
 
-`partial-fn` project uses the above to provide a simple partial function implementation for Clojure.
+This project uses the above to provide first-class pattern matching blocks implementation for Clojure.
+
+The implementation is almost entirely based on Scala's `PartialFunction` - the core implementation, the optimizations, and the combinators.
 
 ## What the project currently does
 
 The REPL session below should demystify the crux of the library:
 
 ```clojure
-user=> (use '[clojure.core.match :only (match)]) (use 'partial-fn.core)
+user=> (use '[clojure.core.match :only (match)]) (use 'match-block.core)
 nil
 nil
-user=> (use '[clojure.pprint :only (pprint)])
-nil
-user=> (macroexpand-1 '(partial-fn [a b] [2 :two] :qux [3 :three] :guz))
-(partial-fn.core/map->PartialFunction {:fun        (clojure.core/fn [a b]
-                                                     (clojure.core.match/match [a b]
-                                                                               [2 :two] :qux
-                                                                               [3 :three] :guz))
-                                       :defined-at? (clojure.core/fn [a b]
-                                                     (clojure.core.match/match [a b]
-                                                                               [2 :two] true
-                                                                               [3 :three] true
-                                                                               :else false))})
+user=> (macroexpand-1 '(match-block [a b] [2 :two] :qux [3 :three] :guz))
+(match-block.core/map->MatchBlock {:fun         (clojure.core/fn [a b]
+                                                  (clojure.core.match/match [a b]
+                                                                            [2 :two] :qux
+                                                                            [3 :three] :guz))
+                                   :defined-at? (clojure.core/fn [a b]
+                                                  (clojure.core.match/match [a b]
+                                                                            [2 :two] true
+                                                                            [3 :three] true
+                                                                            :else false))})
+
 ```
 
 
 ## Future directions for the library
 
-- Combinators to compose, transform partial functions. Examples: `or-else`, `comp`, `apply-or-else`, `lift`, `unlift`, `cond` etc.
+- Combinators to compose, transform pattern matching blocks. Examples: `or-else`, `comp`, `apply-or-else`, `lift`, `unlift`, `cond` etc.
 - Scala's `PartialFunction`s have more special treatment in compiler, making the above-mentioned combinators very efficient. We could borrow some of those ideas in this port.
-- A variant of `try`-`catch` that accepts its handler as a partial function value.
-- The [`slingshot`](https://github.com/scgilardi/slingshot) library has a concept of "selectors". I think "selectors" are simply a special case of "matching", and matching should belong in `core.match`. The selectors could likely be reimplemented with a bunch of custom `core.match` patterns, plus `partial-fn`.
-- The partial function implementation could potentially make use of knowledge of `core.match` innards to provide faster implementations of `:fun` and `:defined-at?`.
+- A variant of `try`-`catch` that accepts its handler as a pattern matching block.
+- The [`slingshot`](https://github.com/scgilardi/slingshot) library has a concept of "selectors". I think "selectors" are simply a special case of "matching", and matching should belong in `core.match`. The selectors could likely be reimplemented with a bunch of custom `core.match` patterns, plus `match-block`.
+- The implementation could potentially make use of knowledge of `core.match` innards to provide faster implementations of `:fun` and `:defined-at?`.
 
 
 ## Usage
@@ -138,12 +143,13 @@ user=> (macroexpand-1 '(partial-fn [a b] [2 :two] :qux [3 :three] :guz))
 (REPL session again.)
 
 ```clojure
-user=> (use '[clojure.core.match :only (match)]) (use 'partial-fn.core)
+user=> (use '[clojure.core.match :only (match)]) (use 'match-block.core)
 nil
 nil
-user=> (define-partial-fn foo [a b]
-  #_=>   [3 1] :nice
-  #_=>   :else :aww-shucks)
+user=> (def foo
+  #_=>   (match-block [a b]
+  #_=>                [3 1] :nice
+  #_=>                :else :aww-shucks))
 #'user/foo
 user=> (foo 3 1)
 :nice
@@ -153,13 +159,14 @@ user=> (defined-at? foo 3 1)
 true
 user=> (defined-at? foo 3 3)
 true
-user=> (define-partial-fn foo [a b]
-  #_=>   [3 1] :nice)
-#'user/foo
-user=> (foo 3 2)
+user=> (def bar
+  #_=>   (match-block [a b]
+  #_=>                [3 1] :nice))
+#'user/bar
+user=> (bar 3 3)
 
-IllegalArgumentException No matching clause: 3 2  user/fn--2398 (NO_SOURCE_FILE:1)
-user=> (defined-at? foo 3 2)
+IllegalArgumentException No matching clause: 3 3  user/fn--2410 (NO_SOURCE_FILE:2)
+user=> (defined-at? bar 3 3)
 false
 user=> Bye for now!%
 ```
