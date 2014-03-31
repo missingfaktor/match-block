@@ -3,31 +3,25 @@
         [match-block.core]
         [match-block.test-util]))
 
-(def sample-pfun (partial-fn [x y]
-                             [3 :a] :hello
-                             [4 :b] :world))
+(def sample-mblock
+  (match-block [x y]
+               [3 :a] :hello
+               [4 :b] :world))
 
-(def another-sample-pfun (partial-fn [x y]
-                                     :else :always))
+(def another-sample-mblock
+  (match-block [x y]
+               :else :always))
 
-(facts-about "partial functions"
-             (sample-pfun 3 :a) => :hello
-             (sample-pfun 4 :b) => :world
-             (sample-pfun :whoopty :do) => (throws Exception)
-             (another-sample-pfun :whoopty :do) => :always
-             (in-domain? sample-pfun 3 :a) => true
-             (in-domain? sample-pfun 4 :b) => true
-             (in-domain? sample-pfun :whoopty :do) => false
-             (in-domain? another-sample-pfun :whoopty :do) => true)
+(facts-about "match blocks"
+             (sample-mblock 3 :a) => :hello
+             (sample-mblock 4 :b) => :world
+             (sample-mblock :whoopty :do) => (throws Exception)
+             (another-sample-mblock :whoopty :do) => :always
+             (defined-at? sample-mblock 3 :a) => true
+             (defined-at? sample-mblock 4 :b) => true
+             (defined-at? sample-mblock :whoopty :do) => false
+             (defined-at? another-sample-mblock :whoopty :do) => true)
 
-(facts-about define-partial-fn
-             (define-partial-fn foo [a]
-                                [:a] :ok
-                                :else :ko) =expands-to=> (def foo
-                                                           (match-block.core/partial-fn [a]
-                                                                                       [:a] :ok
-                                                                                       :else :ko)))
-
-(facts-about empty-partial-fn
-             (empty-partial-fn 4 5 6) => (throws RuntimeException)
-             (in-domain? empty-partial-fn 4 5 6) => false)
+(facts-about empty-match-block
+             (empty-match-block 4 5 6) => (throws RuntimeException)
+             (defined-at? empty-match-block 4 5 6) => false)

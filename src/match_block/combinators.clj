@@ -1,22 +1,21 @@
 (ns match-block.combinators
-  (:use [match-block.core])
-  (:import [match_block.core PartialFunction]))
+  (:use [match-block.core]))
 
-(defn fn->partial-fn [fun]
-  (if (instance? PartialFunction fun)
+(defn fn->match-block [fun]
+  (if (match-block? fun)
     fun
-    (map->PartialFunction {:fun fun
-                           :in-domain? (constantly true)})))
+    (map->MatchBlock {:fun         fun
+                      :defined-at? (constantly true)})))
 
-(defn fallback-to-nil [pfun]
+(defn fallback-to-nil [mblock]
   (fn [& args]
-    (if (apply in-domain? pfun args)
-      (apply pfun args)
+    (if (apply defined-at? mblock args)
+      (apply mblock args)
       nil)))
 
-(defn invoke-with-fallback-fn [pfun fallback-fn & args]
-  (let [fn-to-invoke (if (apply in-domain? pfun args)
-                       pfun
+(defn invoke-with-fallback-fn [mblock fallback-fn & args]
+  (let [fn-to-invoke (if (apply defined-at? mblock args)
+                       mblock
                        fallback-fn)]
     (apply fn-to-invoke args)))
 

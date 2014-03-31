@@ -116,7 +116,7 @@ user=> (macroexpand-1 '(partial-fn [a b] [2 :two] :qux [3 :three] :guz))
                                                      (clojure.core.match/match [a b]
                                                                                [2 :two] :qux
                                                                                [3 :three] :guz))
-                                       :in-domain? (clojure.core/fn [a b]
+                                       :defined-at? (clojure.core/fn [a b]
                                                      (clojure.core.match/match [a b]
                                                                                [2 :two] true
                                                                                [3 :three] true
@@ -130,7 +130,7 @@ user=> (macroexpand-1 '(partial-fn [a b] [2 :two] :qux [3 :three] :guz))
 - Scala's `PartialFunction`s have more special treatment in compiler, making the above-mentioned combinators very efficient. We could borrow some of those ideas in this port.
 - A variant of `try`-`catch` that accepts its handler as a partial function value.
 - The [`slingshot`](https://github.com/scgilardi/slingshot) library has a concept of "selectors". I think "selectors" are simply a special case of "matching", and matching should belong in `core.match`. The selectors could likely be reimplemented with a bunch of custom `core.match` patterns, plus `partial-fn`.
-- The partial function implementation could potentially make use of knowledge of `core.match` innards to provide faster implementations of `:fun` and `:in-domain?`.
+- The partial function implementation could potentially make use of knowledge of `core.match` innards to provide faster implementations of `:fun` and `:defined-at?`.
 
 
 ## Usage
@@ -149,9 +149,9 @@ user=> (foo 3 1)
 :nice
 user=> (foo 3 2)
 :aww-shucks
-user=> (in-domain? foo 3 1)
+user=> (defined-at? foo 3 1)
 true
-user=> (in-domain? foo 3 3)
+user=> (defined-at? foo 3 3)
 true
 user=> (define-partial-fn foo [a b]
   #_=>   [3 1] :nice)
@@ -159,7 +159,7 @@ user=> (define-partial-fn foo [a b]
 user=> (foo 3 2)
 
 IllegalArgumentException No matching clause: 3 2  user/fn--2398 (NO_SOURCE_FILE:1)
-user=> (in-domain? foo 3 2)
+user=> (defined-at? foo 3 2)
 false
 user=> Bye for now!%
 ```

@@ -1,9 +1,9 @@
 (ns match-block.core
   (:import [clojure.lang IFn])
-  (:use [match-block.ast-transformations :only [match-fn-block->in-domain?-block]]
+  (:use [match-block.ast-transformations :only [match-fn-block->defined-at?-block]]
         [clojure.core.match :only [match]]))
 
-(defrecord PartialFunction [in-domain? fun]
+(defrecord MatchBlock [defined-at? fun]
   IFn
   (invoke [this a]
     ((:fun this) a))
@@ -19,19 +19,19 @@
   (applyTo [this args]
     (apply (:fun this) args)))
 
-(defn in-domain? [pfun & args]
-  (apply (:in-domain? pfun) args))
+(defn defined-at? [mblock & args]
+  (apply (:defined-at? mblock) args))
 
-(defmacro partial-fn [args-vec & code]
+(defn match-block? [obj]
+  (instance? MatchBlock obj))
+
+(defmacro match-block [args-vec & code]
   (let [match-fn-block `(fn ~args-vec
                           (match ~args-vec ~@code))]
-    `(map->PartialFunction {:fun        ~match-fn-block
-                            :in-domain? ~(match-fn-block->in-domain?-block match-fn-block)})))
+    `(map->MatchBlock {:fun         ~match-fn-block
+                       :defined-at? ~(match-fn-block->defined-at?-block match-fn-block)})))
 
-(defmacro define-partial-fn [var-name & rest]
-  `(def ~var-name (partial-fn ~@rest)))
-
-(def empty-partial-fn
-  (map->PartialFunction {:fun        (fn [& args]
-                                       (throw (RuntimeException. "Empty partial function.")))
-                         :in-domain? (constantly false)}))
+(def empty-match-block
+  (map->MatchBlock {:fun         (fn [& args]
+                                   (throw (RuntimeException. "Empty match block.")))
+                    :defined-at? (constantly false)}))
