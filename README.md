@@ -1,4 +1,7 @@
 # match-block
+
+## NOTICE: This project has been abandoned.
+
 ### Pattern matching blocks as values.
 
 <br/>
